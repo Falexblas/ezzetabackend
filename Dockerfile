@@ -27,9 +27,8 @@ COPY . /var/www/html
 # Establecer el directorio de trabajo
 WORKDIR /var/www/html
 
-# Instalar dependencias de Laravel (con flags para evitar errores)
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist || \
-    composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
+# Instalar dependencias SIN ejecutar scripts (para evitar el error de package:discover)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Configurar permisos
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
