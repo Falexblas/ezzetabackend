@@ -3,19 +3,16 @@ FROM composer:2.7 AS vendor_builder
 WORKDIR /app
 COPY composer.json composer.lock ./
 
-# Corregir posibles saltos de línea de Windows en los archivos de composer
-RUN apt-get update && apt-get install -y dos2unix && dos2unix composer.json composer.lock
-
 ENV COMPOSER_MEMORY_LIMIT=-1
 
-# Instalar dependencias. Si falla, muestra el diagnóstico exacto
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-dist --ignore-platform-reqs || (composer diagnose && exit 1)
+# Instalar dependencias limpias (sin dos2unix aquí)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-dist --ignore-platform-reqs
 
 # ETAPA 2: Imagen final de PHP
 FROM php:8.3-apache
 WORKDIR /var/www/html
 
-# Instalar dependencias del sistema
+# Instalar dependencias del sistema (aquí sí usamos apt-get y dos2unix)
 RUN apt-get update && apt-get install -y \
     git curl libpng-dev libonig-dev libxml2-dev libzip-dev \
     libjpeg-dev libfreetype6-dev zip unzip libpq-dev libicu-dev dos2unix \
