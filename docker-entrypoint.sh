@@ -3,6 +3,12 @@ set -e
 
 echo "🚀 Iniciando EZZETA Backend..."
 
+# Si no hay APP_KEY en el entorno, generarla una sola vez para el contenedor
+if [ -z "${APP_KEY}" ]; then
+  echo "⚠️ APP_KEY no proporcionada, generando clave de aplicación..."
+  APP_KEY=$(php artisan key:generate --show)
+fi
+
 # Generar el archivo .env desde las variables de entorno de Render
 echo "📝 Generando .env..."
 cat > .env << EOF
