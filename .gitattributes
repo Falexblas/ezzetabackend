@@ -1,11 +1,11 @@
-* text=auto eol=lf
+# Forzar saltos de línea de Linux (LF) para todos los archivos PHP
+*.php text eol=lf
 
-*.blade.php diff=html
-*.css diff=css
-*.html diff=html
-*.md diff=markdown
-*.php diff=php
+# Forzar LF para archivos de configuración
+*.json text eol=lf
+*.xml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
 
-/.github export-ignore
-CHANGELOG.md export-ignore
-.styleci.yml export-ignore
+# Ignorar completamente la carpeta vendor en Git
+/vendor/ export-ignore

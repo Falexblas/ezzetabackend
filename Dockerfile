@@ -1,10 +1,11 @@
 # Imagen base de PHP 8.3 con Apache
 FROM php:8.3-apache
 
-# Actualizar e instalar TODAS las dependencias necesarias
+# Actualizar e instalar dependencias (AGREGAMOS dos2unix AQUÍ)
 RUN apt-get update && apt-get install -y \
     git \
     curl \
+    dos2unix \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
@@ -18,18 +19,7 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql \
     && docker-php-ext-install -j$(nproc) \
-        pdo \
-        pdo_pgsql \
-        pdo_mysql \
-        mbstring \
-        exif \
-        pcntl \
-        bcmath \
-        gd \
-        zip \
-        xml \
-        intl \
-        opcache
+        pdo pdo_pgsql pdo_mysql mbstring exif pcntl bcmath gd zip xml intl opcache
 
 # Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -43,14 +33,16 @@ COPY . /var/www/html
 # Establecer el directorio de trabajo
 WORKDIR /var/www/html
 
-# ⬇️ NUEVO: Dar memoria ilimitada a Composer para evitar descargas corruptas
+# ⬇️ NUEVO: Forzar saltos de línea de Linux en TODOS los archivos PHP ⬇️
+RUN find /var/www/html -type f -name "*.php" -exec dos2unix {} \;
+
 ENV COMPOSER_MEMORY_LIMIT=-1
 
 # Configurar permisos
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# ⬇️ ACTUALIZADO: Limpiar caché antes de instalar para garantizar archivos frescos
+# Instalar dependencias (Composer descargará vendor limpio porque está en .dockerignore)
 RUN composer clear-cache && composer install \
     --no-dev \
     --optimize-autoloader \
@@ -67,9 +59,7 @@ COPY .docker/apache.conf /etc/apache2/sites-available/000-default.conf
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Exponer el puerto 80
 EXPOSE 80
 
-# Usar el entrypoint script
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["apache2-foreground"]
