@@ -43,12 +43,15 @@ COPY . /var/www/html
 # Establecer el directorio de trabajo
 WORKDIR /var/www/html
 
+# ⬇️ NUEVO: Dar memoria ilimitada a Composer para evitar descargas corruptas
+ENV COMPOSER_MEMORY_LIMIT=-1
+
 # Configurar permisos
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Instalar dependencias
-RUN composer install \
+# ⬇️ ACTUALIZADO: Limpiar caché antes de instalar para garantizar archivos frescos
+RUN composer clear-cache && composer install \
     --no-dev \
     --optimize-autoloader \
     --no-interaction \
