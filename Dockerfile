@@ -1,40 +1,36 @@
-# ETAPA 1: Construir dependencias en un entorno 100% limpio de Linux
-FROM composer:2.7 AS vendor_builder
-WORKDIR /app
-COPY composer.json composer.lock ./
-
-ENV COMPOSER_MEMORY_LIMIT=-1
-
-# Instalar dependencias limpias (sin dos2unix aquí)
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-dist --ignore-platform-reqs
-
-# ETAPA 2: Imagen final de PHP
 FROM php:8.3-apache
 WORKDIR /var/www/html
 
-# Instalar dependencias del sistema (aquí sí usamos apt-get y dos2unix)
+# 1. Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
     git curl libpng-dev libonig-dev libxml2-dev libzip-dev \
-    libjpeg-dev libfreetype6-dev zip unzip libpq-dev libicu-dev dos2unix \
+    libjpeg-dev libfreetype6-dev zip unzip libpq-dev libicu-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql \
     && docker-php-ext-install -j$(nproc) pdo pdo_pgsql pdo_mysql mbstring exif pcntl bcmath gd zip xml intl opcache
 
 RUN a2enmod rewrite
 
-# Copiar el código de la app
+# 2. Instalar Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# 3. Copiar SOLO composer.json (El .dockerignore bloqueará el composer.lock y el vendor)
+COPY composer.json ./
+
+# 4. FORZAR a Linux a generar el vendor y el lock desde cero (100% limpio)
+ENV COMPOSER_MEMORY_LIMIT=-1
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
+
+# 5. AHORA sí, copiar el resto del código de tu app
 COPY . /var/www/html/
 
-# 🔥 SEGURO ANTI-COLADO: Destruir cualquier vendor que haya logrado pasar 🔥
-RUN rm -rf /var/www/html/vendor
+# 6. SEGURO NUCLEAR: Destruir cualquier vendor o lock que haya logrado colarse
+RUN rm -rf /var/www/html/vendor /var/www/html/composer.lock
 
-# Copiar el vendor LIMPIO desde la Etapa 1
-COPY --from=vendor_builder /app/vendor /var/www/html/vendor
+# 7. Volver a instalar para garantizar que el vendor sea el que acabamos de generar en el paso 4
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
 
-# Forzar saltos de línea de Linux en los archivos PHP de la app
-RUN find /var/www/html/app /var/www/html/config /var/www/html/routes /var/www/html/database -type f -name "*.php" -exec dos2unix {} \; 2>/dev/null || true
-
-# Permisos
+# 8. Permisos
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
