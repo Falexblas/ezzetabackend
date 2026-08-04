@@ -43,11 +43,11 @@ COPY . /var/www/html
 # Establecer el directorio de trabajo
 WORKDIR /var/www/html
 
-# Configurar permisos ANTES de composer install
+# Configurar permisos
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Instalar dependencias con múltiples estrategias de fallback
+# Instalar dependencias
 RUN composer install \
     --no-dev \
     --optimize-autoloader \
@@ -55,17 +55,18 @@ RUN composer install \
     --no-scripts \
     --prefer-dist \
     --no-progress \
-    --ignore-platform-reqs \
-    || (echo "=== COMPOSER INSTALL FAILED ===" && \
-        composer diagnose && \
-        composer clear-cache && \
-        composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs --no-plugins)
+    --ignore-platform-reqs
 
 # Copiar configuración de Apache
 COPY .docker/apache.conf /etc/apache2/sites-available/000-default.conf
 
+# Copiar el script de entrada
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Exponer el puerto 80
 EXPOSE 80
 
-# Comando de inicio
+# Usar el entrypoint script
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["apache2-foreground"]
