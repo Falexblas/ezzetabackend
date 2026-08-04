@@ -2,7 +2,14 @@
 FROM composer:2.7 AS vendor_builder
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-dist
+
+# Corregir posibles saltos de línea de Windows en los archivos de composer
+RUN apt-get update && apt-get install -y dos2unix && dos2unix composer.json composer.lock
+
+ENV COMPOSER_MEMORY_LIMIT=-1
+
+# Instalar dependencias. Si falla, muestra el diagnóstico exacto
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-dist --ignore-platform-reqs || (composer diagnose && exit 1)
 
 # ETAPA 2: Imagen final de PHP
 FROM php:8.3-apache
@@ -11,21 +18,24 @@ WORKDIR /var/www/html
 # Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
     git curl libpng-dev libonig-dev libxml2-dev libzip-dev \
-    libjpeg-dev libfreetype6-dev zip unzip libpq-dev libicu-dev \
+    libjpeg-dev libfreetype6-dev zip unzip libpq-dev libicu-dev dos2unix \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql \
     && docker-php-ext-install -j$(nproc) pdo pdo_pgsql pdo_mysql mbstring exif pcntl bcmath gd zip xml intl opcache
 
 RUN a2enmod rewrite
 
-# Copiar el código de la app (El .dockerignore debería bloquear el vendor local)
+# Copiar el código de la app
 COPY . /var/www/html/
 
 # 🔥 SEGURO ANTI-COLADO: Destruir cualquier vendor que haya logrado pasar 🔥
 RUN rm -rf /var/www/html/vendor
 
-# Copiar el vendor LIMPIO y fresco desde la Etapa 1
+# Copiar el vendor LIMPIO desde la Etapa 1
 COPY --from=vendor_builder /app/vendor /var/www/html/vendor
+
+# Forzar saltos de línea de Linux en los archivos PHP de la app
+RUN find /var/www/html/app /var/www/html/config /var/www/html/routes /var/www/html/database -type f -name "*.php" -exec dos2unix {} \; 2>/dev/null || true
 
 # Permisos
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
