@@ -34,16 +34,18 @@ class DiscountCodeSeeder extends Seeder
         ];
 
         foreach ($coupons as $coupon) {
-            DiscountCode::create([
-                'code' => $coupon['code'],
-                'type' => $coupon['type'],
-                'value' => $coupon['value'],
-                'min_purchase' => $coupon['min_purchase'],
-                'max_uses' => 500,
-                'current_uses' => 0,
-                'is_active' => true,
-                'expires_at' => $coupon['expires_at'],
-            ]);
+            DiscountCode::updateOrCreate(
+                ['code' => $coupon['code']],
+                [
+                    'type' => $coupon['type'],
+                    'value' => $coupon['value'],
+                    'min_purchase' => $coupon['min_purchase'],
+                    'max_uses' => 500,
+                    'current_uses' => 0,
+                    'is_active' => true,
+                    'expires_at' => $coupon['expires_at'],
+                ]
+            );
         }
     }
 }

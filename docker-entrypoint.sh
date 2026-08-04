@@ -31,9 +31,14 @@ echo "✅ .env generado correctamente"
 
 # Ejecutar migraciones
 echo "🔄 Ejecutando migraciones..."
-php artisan migrate --seed --force || echo "️ Las migraciones ya existían o hubo un error menor"
+php artisan migrate --force || echo "⚠️ No fue posible ejecutar las migraciones"
 
-echo "✅ Migraciones completadas"
+if [ "${SEED_DATABASE:-true}" = "true" ]; then
+    echo "🌱 Ejecutando seeders..."
+    php artisan db:seed --force || echo "⚠️ No fue posible ejecutar los seeders"
+fi
+
+echo "✅ Inicialización completada"
 
 # Ejecutar el comando principal (Apache)
 echo "🌐 Iniciando Apache..."

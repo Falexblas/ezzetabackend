@@ -281,31 +281,33 @@ class ProductSeeder extends Seeder
         // 3. Crear productos y variantes
         foreach ($productsData as $prod) {
             $slug = Str::slug($prod['name']);
-            $product = Product::create([
-                'category_id' => $prod['category_id'],
-                'name' => $prod['name'],
-                'slug' => $slug,
-                'description' => $prod['description'],
-                'base_price' => $prod['base_price'],
-                'main_image' => $prod['main_image'],
-                'is_active' => true,
-            ]);
+            $product = Product::updateOrCreate(
+                ['slug' => $slug],
+                [
+                    'category_id' => $prod['category_id'],
+                    'name' => $prod['name'],
+                    'description' => $prod['description'],
+                    'base_price' => $prod['base_price'],
+                    'main_image' => $prod['main_image'],
+                    'is_active' => true,
+                ]
+            );
 
-            // Crear variantes de tallas para el color del producto
             foreach ($prod['variants'] as $v) {
-                // Generar SKU único en formato: EZZ-PRODSlug-SIZE-COLOR (sin espacios)
                 $cleanColor = Str::slug($prod['color']);
                 $sku = strtoupper("EZZ-{$slug}-{$v['size']}-{$cleanColor}");
 
-                ProductVariant::create([
-                    'product_id' => $product->id,
-                    'size' => $v['size'],
-                    'color' => $prod['color'],
-                    'price_adjustment' => $v['price_adjustment'],
-                    'stock' => $v['stock'],
-                    'sku' => $sku,
-                    'image' => $prod['main_image'] // La imagen de la variante coincide con la del producto por color
-                ]);
+                ProductVariant::updateOrCreate(
+                    ['sku' => $sku],
+                    [
+                        'product_id' => $product->id,
+                        'size' => $v['size'],
+                        'color' => $prod['color'],
+                        'price_adjustment' => $v['price_adjustment'],
+                        'stock' => $v['stock'],
+                        'image' => $prod['main_image']
+                    ]
+                );
             }
         }
     }
