@@ -14,21 +14,15 @@ RUN a2enmod rewrite
 # 2. Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 3. Copiar SOLO composer.json (El .dockerignore bloqueará el composer.lock y el vendor)
-COPY composer.json ./
+# 3. Copiar composer.json y composer.lock para que Composer instale las versiones bloqueadas
+COPY composer.json composer.lock ./
 
-# 4. FORZAR a Linux a generar el vendor y el lock desde cero (100% limpio)
+# 4. Instalar dependencias bloqueadas con la plataforma PHP correcta
 ENV COMPOSER_MEMORY_LIMIT=-1
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
-# 5. AHORA sí, copiar el resto del código de tu app
+# 5. Copiar el resto del código de tu app
 COPY . /var/www/html/
-
-# 6. SEGURO NUCLEAR: Destruir cualquier vendor o lock que haya logrado colarse
-RUN rm -rf /var/www/html/vendor /var/www/html/composer.lock
-
-# 7. Volver a instalar para garantizar que el vendor sea el que acabamos de generar en el paso 4
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
 
 # 8. Permisos
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
